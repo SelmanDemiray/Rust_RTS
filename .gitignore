@@ -1,0 +1,31 @@
+# Create .gitignore file
+echo "# Rust build artifacts and dependencies
+/target/
+**/target/
+**/*.rs.bk
+Cargo.lock
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# WASM build outputs
+**/pkg/
+
+# Environment files (can contain sensitive information)
+.env
+# but include example.env for reference
+!example.env
+
+# Windows-specific
+Thumbs.db
+Desktop.ini
+
+# macOS-specific
+.DS_Store
+
+# Node.js dependencies (if you use npm/yarn for frontend)
+node_modules/
+" > .gitignore

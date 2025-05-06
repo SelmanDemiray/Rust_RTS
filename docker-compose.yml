@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: rts_game
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5432"
+
+  server:
+    build:
+      context: .
+      dockerfile: rts_server/Dockerfile
+    environment:
+      DATABASE_URL: postgres://user:password@db/rts_game
+      SERVER_ADDR: 0.0.0.0:8080
+      PUBLIC_HOST: ${HOST_IP:-localhost}
+      # Add more logging
+      RUST_LOG: rts_server=debug,tower_http=debug,axum=debug,sqlx=info
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Use a fixed port for debugging
+      - "8080:8080"
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: rts_client_wasm/Dockerfile
+    environment:
+      SERVER_PORT: "8080"     # Use internal port
+      SERVER_HOST: "server"   # Internal service name (for fallback)
+      PUBLIC_HOST: "${HOST_IP:-localhost}"   # Host's IP address for browser access
+    ports:
+      # Use a fixed port for debugging
+      - "8000:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  db_data:

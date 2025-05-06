@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced WebSocket Tester</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        pre {
+            background: #2b2b2b;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .success { color: #a6e22e; }
+        .error { color: #f92672; }
+        .warning { color: #fd971f; }
+        .info { color: #66d9ef; }
+        input, button, select {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        #url {
+            width: 300px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .controls {
+            background-color: #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced WebSocket Connection Tester</h1>
+    
+    <div class="controls">
+        <div>
+            <label for="url">WebSocket URL:</label>
+            <input type="text" id="url" value="ws://localhost:8080/ws" placeholder="WebSocket URL (ws://host:port/path)">
+        </div>
+        
+        <div>
+            <label for="autoreconnect">Auto Reconnect:</label>
+            <input type="checkbox" id="autoreconnect" checked>
+            <label for="reconnect-delay">Reconnect Delay (ms):</label>
+            <input type="number" id="reconnect-delay" value="3000" min="100" max="30000">
+        </div>
+        
+        <div>
+            <button onclick="testConnection()">Connect / Disconnect</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div>
+            <h3>Send Message</h3>
+            <select id="messageType">
+                <option value="Authenticate">Authenticate</option>
+                <option value="Chat">Chat Message</option>
+                <option value="RequestMapData">Request Map Data</option>
+                <option value="MoveCommand">Move Command</option>
+                <option value="Custom">Custom JSON</option>
+            </select>
+            <div id="messageParams">
+                <div id="auth-params">
+                    <label for="token">Token:</label>
+                    <input type="text" id="token" value="dummy-token-for-123">
+                </div>
+            </div>
+            <div id="custom-json" style="display:none;">
+                <textarea id="custom-message">{
+  "Authenticate": {
+    "token": "dummy-token-for-123"
+  }
+}</textarea>
+            </div>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    
+    <h3>Connection Log</h3>
+    <pre id="log"></pre>
+    
+    <script>
+        let socket = null;
+        let isConnecting = false;
+        let reconnectTimer = null;
+        const log = document.getElementById('log');
+        const messageType = document.getElementById('messageType');
+        const customJson = document.getElementById('custom-json');
+        const messageParams = document.getElementById('messageParams');
+        
+        // Message type selection handling
+        messageType.addEventListener('change', updateMessageParams);
+        
+        function updateMessageParams() {
+            const type = messageType.value;
+            customJson.style.display = type === 'Custom' ? 'block' : 'none';
+            
+            // Clear existing params
+            while (messageParams.firstChild) {
+                messageParams.removeChild(messageParams.firstChild);
+            }
+            
+            // Add appropriate params based on message type
+            switch(type) {
+                case 'Authenticate':
+                    addParam('token', 'dummy-token-for-123');
+                    break;
+                case 'Chat':
+                    addParam('message', 'Hello from WebSocket tester!');
+                    break;
+                case 'RequestMapData':
+                    addParam('x', '0');
+                    addParam('y', '0');
+                    addParam('z', '0');
+                    addParam('zoom_level', '10');
+                    break;
+                case 'MoveCommand':
+                    addParam('entity_ids', '1,2,3');
+                    addParam('x', '100');
+                    addParam('y', '100');
+                    addParam('z', '0');
+                    break;
+            }
+        }
+        
+        function addParam(name, defaultValue) {
+            const div = document.createElement('div');
+            const label = document.createElement('label');
+            label.textContent = name + ':';
+            label.setAttribute('for', name);
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = name;
+            input.value = defaultValue;
+            
+            div.appendChild(label);
+            div.appendChild(input);
+            messageParams.appendChild(div);
+        }
+        
+        function appendLog(message, type = '') {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `<div class="${type}">[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        function testConnection() {
+            const url = document.getElementById('url').value;
+            
+            if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+                // Disconnect if already connected or connecting
+                appendLog('Closing existing connection...', 'warning');
+                clearAutoReconnect();
+                socket.close();
+                socket = null;
+                return;
+            }
+            
+            connectWebSocket(url);
+        }
+        
+        function connectWebSocket(url) {
+            if (isConnecting) return;
+            isConnecting = true;
+            
+            appendLog(`Attempting to connect to ${url}...`, 'info');
+            
+            try {
+                socket = new WebSocket(url);
+                
+                socket.onopen = () => {
+                    isConnecting = false;
+                    appendLog('Connection established!', 'success');
+                    clearAutoReconnect();
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        appendLog(`Received: ${JSON.stringify(data, null, 2)}`, 'success');
+                    } catch (e) {
+                        appendLog(`Received non-JSON message: ${event.data}`);
+                    }
+                };
+                
+                socket.onerror = (error) => {
+                    appendLog(`Error: ${error.message || 'Unknown error'}`, 'error');
+                };
+                
+                socket.onclose = (event) => {
+                    isConnecting = false;
+                    if (event.wasClean) {
+                        appendLog(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`, 'warning');
+                    } else {
+                        appendLog('Connection died', 'error');
+                    }
+                    
+                    // Setup auto reconnect
+                    if (document.getElementById('autoreconnect').checked) {
+                        const delay = parseInt(document.getElementById('reconnect-delay').value) || 3000;
+                        appendLog(`Will attempt to reconnect in ${delay}ms...`, 'info');
+                        reconnectTimer = setTimeout(() => connectWebSocket(url), delay);
+                    }
+                };
+            } catch (err) {
+                isConnecting = false;
+                appendLog(`Failed to create WebSocket: ${err.toString()}`, 'error');
+            }
+        }
+        
+        function clearAutoReconnect() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        }
+        
+        function sendMessage() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                appendLog('Cannot send message: WebSocket not connected', 'error');
+                return;
+            }
+            
+            try {
+                let message;
+                
+                if (messageType.value === 'Custom') {
+                    const customMessage = document.getElementById('custom-message').value;
+                    message = JSON.parse(customMessage);
+                } else {
+                    // Construct message based on type
+                    switch(messageType.value) {
+                        case 'Authenticate':
+                            message = {
+                                Authenticate: {
+                                    token: document.getElementById('token').value
+                                }
+                            };
+                            break;
+                        case 'Chat':
+                            message = {
+                                Chat: {
+                                    message: document.getElementById('message').value
+                                }
+                            };
+                            break;
+                        case 'RequestMapData': 
+                            message = {
+                                RequestMapData: {
+                                    area: {
+                                        x: parseInt(document.getElementById('x').value),
+                                        y: parseInt(document.getElementById('y').value),
+                                        z: parseInt(document.getElementById('z').value),
+                                        zoom_level: parseInt(document.getElementById('zoom_level').value)
+                                    }
+                                }
+                            };
+                            break;
+                        case 'MoveCommand':
+                            const entityIds = document.getElementById('entity_ids').value
+                                .split(',')
+                                .map(id => parseInt(id.trim()))
+                                .filter(id => !isNaN(id));
+                                
+                            message = {
+                                MoveCommand: {
+                                    entity_ids: entityIds,
+                                    target_position: {
+                                        x: parseInt(document.getElementById('x').value),
+                                        y: parseInt(document.getElementById('y').value),
+                                        z: parseInt(document.getElementById('z').value)
+                                    }
+                                }
+                            };
+                            break;
+                    }
+                }
+                
+                const messageString = JSON.stringify(message);
+                socket.send(messageString);
+                appendLog(`Sent: ${JSON.stringify(message, null, 2)}`, 'info');
+            } catch (err) {
+                appendLog(`Error sending message: ${err.toString()}`, 'error');
+            }
+        }
+        
+        // Initialize message params
+        updateMessageParams();
+    </script>
+</body>
+</html>

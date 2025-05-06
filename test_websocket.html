@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>RTS WebSocket Tester</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+        }
+        #url {
+            width: 300px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>RTS WebSocket Connection Tester</h1>
+    
+    <div>
+        <input type="text" id="url" value="ws://localhost:8080/ws" placeholder="WebSocket URL (ws://host:port/path)">
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="testRendering()">Test Canvas</button>
+    </div>
+    
+    <h3>Connection Log</h3>
+    <pre id="log"></pre>
+    
+    <script>
+        let socket = null;
+        const log = document.getElementById('log');
+        let testCanvas = null;
+        
+        function appendLog(message, type = '') {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `<div class="${type}">[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function testConnection() {
+            const url = document.getElementById('url').value;
+            appendLog(`Attempting to connect to ${url}...`);
+            
+            if (socket) {
+                appendLog('Closing existing connection...', 'warning');
+                socket.close();
+            }
+            
+            try {
+                socket = new WebSocket(url);
+                
+                socket.onopen = () => {
+                    appendLog('Connection established!', 'success');
+                    appendLog('Sending authentication message...', 'success');
+                    
+                    // Send authentication message
+                    const authMessage = {
+                        Authenticate: { token: "dummy-token-for-123" }
+                    };
+                    socket.send(JSON.stringify(authMessage));
+                };
+                
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        appendLog(`Received: ${JSON.stringify(data, null, 2)}`, 'success');
+                    } catch (e) {
+                        appendLog(`Received non-JSON message: ${event.data}`);
+                    }
+                };
+                
+                socket.onerror = (error) => {
+                    appendLog(`Error: ${error.message || 'Unknown error'}`, 'error');
+                };
+                
+                socket.onclose = (event) => {
+                    if (event.wasClean) {
+                        appendLog(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`, 'warning');
+                    } else {
+                        appendLog('Connection died', 'error');
+                    }
+                };
+            } catch (err) {
+                appendLog(`Failed to create WebSocket: ${err.toString()}`, 'error');
+            }
+        }
+        
+        function testRendering() {
+            // Remove existing test canvas if any
+            if (testCanvas) {
+                testCanvas.remove();
+            }
+            
+            // Create a new canvas
+            testCanvas = document.createElement('canvas');
+            testCanvas.width = 400;
+            testCanvas.height = 300;
+            document.body.appendChild(testCanvas);
+            
+            try {
+                const ctx = testCanvas.getContext('2d');
+                
+                // Draw a background
+                ctx.fillStyle = '#224488';
+                ctx.fillRect(0, 0, testCanvas.width, testCanvas.height);
+                
+                // Draw a simple grid
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                for(let x = 0; x < testCanvas.width; x += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, testCanvas.height);
+                    ctx.stroke();
+                }
+                for(let y = 0; y < testCanvas.height; y += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(testCanvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // Draw some text
+                ctx.fillStyle = 'white';
+                ctx.font = '20px Arial';
+                ctx.fillText('Canvas rendering works!', 20, 30);
+                
+                // Draw a simple game entity
+                ctx.fillStyle = '#ff4444';
+                ctx.beginPath();
+                ctx.arc(200, 150, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                appendLog('Canvas test rendered successfully', 'success');
+            } catch (e) {
+                appendLog(`Canvas error: ${e.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
