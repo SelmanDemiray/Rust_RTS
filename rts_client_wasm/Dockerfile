@@ -37,7 +37,24 @@ echo "  apiUrl: \"http://$HOST_ADDR:$SERVER_PORT/\"" >> /web/config.js
 echo "};" >> /web/config.js
 
 echo "Generated config.js with serverUrl: ws://$HOST_ADDR:$SERVER_PORT/ws"
-exec npx serve -p 80 -s /web
+
+# Copy admin.html to admin/index.html right before serving to ensure it's up to date
+mkdir -p /web/admin
+cp -f /web/admin.html /web/admin/index.html
+
+# Use a custom serve.json to properly handle routing
+cat > /web/serve.json <<SERVECFG
+{
+  "public": "/web",
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/*", "destination": "/admin/index.html" }
+  ],
+  "cleanUrls": true
+}
+SERVECFG
+
+exec npx serve -p 80 -c /web/serve.json
 EOF
 RUN chmod +x /app/rts_client_wasm/start.sh
 

@@ -41,6 +41,8 @@ services:
       SERVER_PORT: "8080"     # Use internal port
       SERVER_HOST: "server"   # Internal service name (for fallback)
       PUBLIC_HOST: "${HOST_IP:-localhost}"   # Host's IP address for browser access
+      # Add debug flags for serve
+      DEBUG: "serve:*"
     ports:
       # Use a fixed port for debugging
       - "8000:80"

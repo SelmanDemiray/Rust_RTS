@@ -2,96 +2,199 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>RTS WebSocket Tester</title>
+    <title>RTS WebSocket Tester (Admin Only)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
         body {
-            font-family: monospace;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #181c2f 0%, #232946 100%);
+            font-family: 'Orbitron', 'Segoe UI', 'Arial', sans-serif;
+            color: #e0eaff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
         }
-        pre {
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            overflow-x: auto;
+        h1 {
+            margin-top: 2.5rem;
+            font-size: 2.6rem;
+            letter-spacing: 0.13em;
+            color: #00ffe7;
+            text-shadow: 0 0 18px #00ffe7, 0 0 32px #00ffe780;
+            background: linear-gradient(90deg, #00ffe7 30%, #00bfff 70%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px #00ffe7aa);
         }
-        .success { color: green; }
-        .error { color: red; }
-        .warning { color: orange; }
-        input, button {
-            padding: 8px;
-            margin: 5px 0;
+        .glass-panel {
+            margin-top: 2.5rem;
+            background: rgba(30, 40, 60, 0.82);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 #00ffe733, 0 2px 12px 0 #00ffe7cc;
+            backdrop-filter: blur(14px);
+            border: 2px solid rgba(0,255,231,0.18);
+            padding: 2.5rem 2.5rem 2rem 2.5rem;
+            width: 95vw;
+            max-width: 700px;
+            min-height: 420px;
+            position: relative;
         }
-        #url {
-            width: 300px;
+        .glass-panel:after {
+            content: '';
+            display: block;
+            pointer-events: none;
+            position: absolute;
+            left: 0; top: 0; right: 0; bottom: 0;
+            border-radius: 20px;
+            box-shadow: 0 0 40px 6px #00ffe7cc, 0 0 0 2px #00bfff55 inset;
+            opacity: 0.13;
+            z-index: 0;
+        }
+        .admin-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .admin-controls input[type="text"] {
+            background: rgba(0,0,0,0.18);
+            border: 1.5px solid #00ffe7;
+            color: #00ffe7;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 1.1rem;
+            outline: none;
+            transition: border 0.2s;
+            width: 320px;
+        }
+        .admin-controls button {
+            background: linear-gradient(90deg, #00ffe7 0%, #00bfff 100%);
+            color: #181c2f;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 22px;
+            font-size: 1.1rem;
+            font-family: 'Orbitron', 'Segoe UI', 'Arial', sans-serif;
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00ffe7cc;
+            transition: background 0.2s, color 0.2s;
+        }
+        .admin-controls button:hover {
+            background: linear-gradient(90deg, #00bfff 0%, #00ffe7 100%);
+            color: #232946;
+        }
+        #log {
+            background: rgba(20, 30, 50, 0.93);
+            border-radius: 12px;
+            padding: 18px;
+            font-family: 'Fira Mono', 'Consolas', monospace;
+            font-size: 1.08rem;
+            line-height: 1.7;
+            color: #e0eaff;
+            margin: 0;
+            min-height: 120px;
+            max-height: 260px;
+            overflow-y: auto;
+            box-shadow: 0 0 8px #00ffe7cc, 0 0 2px #00bfff99;
+        }
+        .success { color: #00ffe7; }
+        .error { color: #ff4e4e; }
+        .warning { color: #ffb347; }
+        .info { color: #b0eaff; }
+        .canvas-container {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         canvas {
-            border: 1px solid #ccc;
+            border: 2px solid #00ffe7;
+            border-radius: 10px;
             margin-top: 10px;
+            background: #232946;
+            box-shadow: 0 0 16px #00ffe7cc;
             display: block;
+        }
+        @media (max-width: 700px) {
+            .glass-panel {
+                padding: 1.2rem 0.5rem 1rem 0.5rem;
+                min-width: unset;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            .admin-controls input[type="text"] {
+                width: 98vw;
+                min-width: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>RTS WebSocket Connection Tester</h1>
-    
-    <div>
-        <input type="text" id="url" value="ws://localhost:8080/ws" placeholder="WebSocket URL (ws://host:port/path)">
-        <button onclick="testConnection()">Test Connection</button>
-        <button onclick="testRendering()">Test Canvas</button>
+    <h1>RTS WebSocket Admin Tester</h1>
+    <div class="glass-panel">
+        <div class="admin-controls">
+            <input type="text" id="url" value="ws://localhost:8080/ws" placeholder="WebSocket URL (ws://host:port/path)">
+            <button onclick="testConnection()">Test Connection</button>
+            <button onclick="testRendering()">Test Canvas</button>
+        </div>
+        <h3 style="margin-bottom:0.5rem;color:#00ffe7;text-shadow:0 0 8px #00ffe7cc;">Connection Log</h3>
+        <pre id="log"></pre>
+        <div class="canvas-container" id="canvas-container"></div>
     </div>
-    
-    <h3>Connection Log</h3>
-    <pre id="log"></pre>
-    
     <script>
         let socket = null;
         const log = document.getElementById('log');
         let testCanvas = null;
-        
+
         function appendLog(message, type = '') {
             const time = new Date().toLocaleTimeString();
             log.innerHTML += `<div class="${type}">[${time}] ${message}</div>`;
             log.scrollTop = log.scrollHeight;
         }
-        
+
         function testConnection() {
             const url = document.getElementById('url').value;
-            appendLog(`Attempting to connect to ${url}...`);
-            
+            appendLog(`Attempting to connect to ${url}...`, 'info');
+
             if (socket) {
                 appendLog('Closing existing connection...', 'warning');
                 socket.close();
             }
-            
+
             try {
                 socket = new WebSocket(url);
-                
+
                 socket.onopen = () => {
                     appendLog('Connection established!', 'success');
-                    appendLog('Sending authentication message...', 'success');
-                    
+                    appendLog('Sending authentication message...', 'info');
+
                     // Send authentication message
                     const authMessage = {
                         Authenticate: { token: "dummy-token-for-123" }
                     };
                     socket.send(JSON.stringify(authMessage));
                 };
-                
+
                 socket.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
                         appendLog(`Received: ${JSON.stringify(data, null, 2)}`, 'success');
                     } catch (e) {
-                        appendLog(`Received non-JSON message: ${event.data}`);
+                        appendLog(`Received non-JSON message: ${event.data}`, 'warning');
                     }
                 };
-                
+
                 socket.onerror = (error) => {
                     appendLog(`Error: ${error.message || 'Unknown error'}`, 'error');
                 };
-                
+
                 socket.onclose = (event) => {
                     if (event.wasClean) {
                         appendLog(`Connection closed cleanly, code=${event.code}, reason=${event.reason}`, 'warning');
@@ -103,56 +206,81 @@
                 appendLog(`Failed to create WebSocket: ${err.toString()}`, 'error');
             }
         }
-        
+
         function testRendering() {
             // Remove existing test canvas if any
             if (testCanvas) {
                 testCanvas.remove();
             }
-            
+
             // Create a new canvas
             testCanvas = document.createElement('canvas');
-            testCanvas.width = 400;
+            testCanvas.width = 420;
             testCanvas.height = 300;
-            document.body.appendChild(testCanvas);
-            
+            testCanvas.style.marginTop = "0.5rem";
+            document.getElementById('canvas-container').appendChild(testCanvas);
+
             try {
                 const ctx = testCanvas.getContext('2d');
-                
-                // Draw a background
-                ctx.fillStyle = '#224488';
+
+                // Glassy background
+                ctx.save();
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = "#232946";
                 ctx.fillRect(0, 0, testCanvas.width, testCanvas.height);
-                
-                // Draw a simple grid
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1;
+                ctx.restore();
+
+                // Neon grid
+                ctx.strokeStyle = "#00ffe7";
+                ctx.lineWidth = 1.2;
                 for(let x = 0; x < testCanvas.width; x += 40) {
                     ctx.beginPath();
                     ctx.moveTo(x, 0);
                     ctx.lineTo(x, testCanvas.height);
+                    ctx.shadowColor = "#00ffe7";
+                    ctx.shadowBlur = 6;
                     ctx.stroke();
                 }
                 for(let y = 0; y < testCanvas.height; y += 40) {
                     ctx.beginPath();
                     ctx.moveTo(0, y);
                     ctx.lineTo(testCanvas.width, y);
+                    ctx.shadowColor = "#00ffe7";
+                    ctx.shadowBlur = 6;
                     ctx.stroke();
                 }
-                
-                // Draw some text
-                ctx.fillStyle = 'white';
-                ctx.font = '20px Arial';
-                ctx.fillText('Canvas rendering works!', 20, 30);
-                
-                // Draw a simple game entity
-                ctx.fillStyle = '#ff4444';
+                ctx.shadowBlur = 0;
+
+                // Futuristic text
+                ctx.fillStyle = "#00ffe7";
+                ctx.font = 'bold 22px Orbitron, Arial';
+                ctx.shadowColor = "#00ffe7";
+                ctx.shadowBlur = 12;
+                ctx.fillText('Admin Canvas: Rendering OK', 24, 40);
+                ctx.shadowBlur = 0;
+
+                // Draw a glowing entity
+                ctx.save();
                 ctx.beginPath();
-                ctx.arc(200, 150, 15, 0, Math.PI * 2);
+                ctx.arc(210, 150, 22, 0, Math.PI * 2);
+                ctx.shadowColor = "#ff4e4e";
+                ctx.shadowBlur = 18;
+                ctx.fillStyle = "#ff4e4e";
                 ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
+                ctx.restore();
+
+                // Draw a "blessed" badge
+                ctx.save();
+                ctx.translate(320, 260);
+                ctx.rotate(-0.1);
+                ctx.globalAlpha = 0.92;
+                ctx.fillStyle = "#00ffe7";
+                ctx.font = "bold 18px Orbitron, Arial";
+                ctx.shadowColor = "#00ffe7";
+                ctx.shadowBlur = 10;
+                ctx.fillText("BLESSED", 0, 0);
+                ctx.restore();
+
                 appendLog('Canvas test rendered successfully', 'success');
             } catch (e) {
                 appendLog(`Canvas error: ${e.message}`, 'error');
